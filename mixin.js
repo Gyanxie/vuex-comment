@@ -1,4 +1,8 @@
 export default function (Vue) {
+    // 全局混入vuexInit
+    // 这里针对每个Vue对象的创建，都会调用一次vuexInit
+    // 将vm.$store = this.$options.store;
+    // parent的作用是一直往下传递
   const version = Number(Vue.version.split('.')[0])
 
   if (version >= 2) {

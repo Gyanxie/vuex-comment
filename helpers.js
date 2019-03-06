@@ -114,6 +114,7 @@ export const mapActions = normalizeNamespace((namespace, actions) => {
  * @param {String} namespace
  * @return {Object}
  */
+// 暴露方法
 export const createNamespacedHelpers = (namespace) => ({
   mapState: mapState.bind(null, namespace),
   mapGetters: mapGetters.bind(null, namespace),
@@ -128,6 +129,8 @@ export const createNamespacedHelpers = (namespace) => ({
  * @param {Array|Object} map
  * @return {Object}
  */
+// map对象序列化
+// 最后都是[ { key: 'a', val: 1 }, { key: 'b', val: 2 }, { key: 'c', val: 3 } ]形式
 function normalizeMap (map) {
   return Array.isArray(map)
     ? map.map(key => ({ key, val: key }))
@@ -139,6 +142,9 @@ function normalizeMap (map) {
  * @param {Function} fn
  * @return {Function}
  */
+// 命名空间序列化， 考虑3中情况
+// MapXxxx(map), MapXxxx('name', map), MapXxxx('name/', map);
+// 将1, 2转为3
 function normalizeNamespace (fn) {
   return (namespace, map) => {
     if (typeof namespace !== 'string') {

@@ -5,10 +5,10 @@ export default class Module {
   constructor (rawModule, runtime) {
     this.runtime = runtime
     // Store some children item
-    this._children = Object.create(null)
+    this._children = Object.create(null) // 字模块
     // Store the origin module object which passed by programmer
-    this._rawModule = rawModule
-    const rawState = rawModule.state
+    this._rawModule = rawModule // 原始配置
+    const rawState = rawModule.state  // 原始state
 
     // Store the origin module's state
     this.state = (typeof rawState === 'function' ? rawState() : rawState) || {}

@@ -8,12 +8,14 @@ export default class ModuleCollection {
   }
 
   get (path) {
+    // 迭代获取module对象
     return path.reduce((module, key) => {
       return module.getChild(key)
     }, this.root)
   }
 
   getNamespace (path) {
+      // 迭代获取路径字符串 'module/parent/xxxx'
     let module = this.root
     return path.reduce((namespace, key) => {
       module = module.getChild(key)
@@ -22,10 +24,14 @@ export default class ModuleCollection {
   }
 
   update (rawRootModule) {
+    // 支持部分更新
     update([], this.root, rawRootModule)
   }
 
   register (path, rawModule, runtime = true) {
+     // 迭代创建Module对象，构建树
+      // runtime 表示初始化后，用户动态自行添加的
+      // 删除只能删除该部分模块
     if (process.env.NODE_ENV !== 'production') {
       assertRawModule(path, rawModule)
     }
@@ -63,6 +69,7 @@ function update (path, targetModule, newModule) {
   // update target module
   targetModule.update(newModule)
 
+   // 迭代更新子模块
   // update nested modules
   if (newModule.modules) {
     for (const key in newModule.modules) {

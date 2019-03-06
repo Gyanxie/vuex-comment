@@ -26,19 +26,20 @@ export class Store {
     } = options
 
     // store internal state
-    this._committing = false
-    this._actions = Object.create(null)
+    this._committing = false // 用于严格模式下，在内部修改state是关闭警告
+    this._actions = Object.create(null) // 包括模块中的所有的action
     this._actionSubscribers = []
-    this._mutations = Object.create(null)
-    this._wrappedGetters = Object.create(null)
-    this._modules = new ModuleCollection(options)
-    this._modulesNamespaceMap = Object.create(null)
+    this._mutations = Object.create(null)  // 包括模块中的所有的mutation
+    this._wrappedGetters = Object.create(null)  // 包括模块中的所有的getter
+    this._modules = new ModuleCollection(options) // 所有的模块
+    this._modulesNamespaceMap = Object.create(null)  // 所有模块的配置信息
     this._subscribers = []
-    this._watcherVM = new Vue()
+    this._watcherVM = new Vue() // 用于对外暴露一个watch的方法，用于watch state
 
     // bind commit and dispatch to self
     const store = this
     const { dispatch, commit } = this
+    // 直接引用将原型链的函数
     this.dispatch = function boundDispatch (type, payload) {
       return dispatch.call(store, type, payload)
     }
@@ -114,6 +115,7 @@ export class Store {
   }
 
   dispatch (_type, _payload) {
+    // 包括其他commit,getter,states, 所有的type都必须是完整的路径
     // check object-style dispatch
     const {
       type,
@@ -160,11 +162,15 @@ export class Store {
   }
 
   subscribe (fn) {
+     // 订阅，并返回取消订阅的函数
+      // 该函数在mutation后触发
     return genericSubscribe(fn, this._subscribers)
   }
 
   subscribeAction (fn) {
     const subs = typeof fn === 'function' ? { before: fn } : fn
+     // 订阅，并返回取消订阅的函数
+      // 该函数会在 dispatch中触发，分别位于action方法前后触发
     return genericSubscribe(subs, this._actionSubscribers)
   }
 
@@ -205,8 +211,10 @@ export class Store {
     this._modules.unregister(path)
     this._withCommit(() => {
       const parentState = getNestedState(this.state, path.slice(0, -1))
+        // 此处应该时为了触发$watch
       Vue.delete(parentState, path[path.length - 1])
     })
+    // 卸载模块时，重新新建Vue对象
     resetStore(this)
   }
 
@@ -254,6 +262,8 @@ function resetStoreVM (store, state, hot) {
   store.getters = {}
   const wrappedGetters = store._wrappedGetters
   const computed = {}
+  // 这里将getter的方法拓展到computed
+  // 这样每当调用getter的时候，就会有依赖收集的过程
   forEachValue(wrappedGetters, (fn, key) => {
     // use computed to leverage its lazy-caching mechanism
     computed[key] = () => fn(store)
@@ -285,6 +295,7 @@ function resetStoreVM (store, state, hot) {
     if (hot) {
       // dispatch changes in all subscribed watchers
       // to force getter re-evaluation for hot reloading.
+        // 热更新时，修改旧的state, 使得watcher能够监听到
       store._withCommit(() => {
         oldVm._data.$$state = null
       })
@@ -304,6 +315,19 @@ function installModule (store, rootState, path, module, hot) {
 
   // set state
   if (!isRoot && !hot) {
+    // 这个说明了module的state保存方法
+    // vm.$$state = {
+      //    key: value
+      //    [parent]: {
+      //        [child1]: {
+      //            [child1's child]: ....
+      //        }
+      //    }
+      //    
+      // }
+      // 另外module.state保留了改对象的引用
+      // set方法会弄成响应式
+      
     const parentState = getNestedState(rootState, path.slice(0, -1))
     const moduleName = path[path.length - 1]
     store._withCommit(() => {
@@ -312,6 +336,7 @@ function installModule (store, rootState, path, module, hot) {
   }
 
   const local = module.context = makeLocalContext(store, namespace, path)
+   // context 其实是保留了name的路径,  用于commit, dispatch时路径补全
 
   module.forEachMutation((mutation, key) => {
     const namespacedType = namespace + key
@@ -464,6 +489,8 @@ function registerGetter (store, type, rawGetter, local) {
 }
 
 function enableStrictMode (store) {
+  // 所谓的严格模式是，不允许外部直接修改state
+    // 通过依赖收集=号的赋值行为
   store._vm.$watch(function () { return this._data.$$state }, () => {
     if (process.env.NODE_ENV !== 'production') {
       assert(store._committing, `do not mutate vuex store state outside mutation handlers.`)
@@ -471,12 +498,15 @@ function enableStrictMode (store) {
   }, { deep: true, sync: true })
 }
 
+// 迭代对象的路径，获取值
 function getNestedState (state, path) {
   return path.length
     ? path.reduce((state, key) => state[key], state)
     : state
 }
-
+// 当type参数省略时,  commit({ type: 'xxx', ..}, option);
+// 满足isObject(type) && type.type === true
+// 转成3个参数的格式
 function unifyObjectStyle (type, payload, options) {
   if (isObject(type) && type.type) {
     options = payload
